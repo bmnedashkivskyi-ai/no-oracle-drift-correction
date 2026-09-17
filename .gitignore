@@ -1,0 +1,32 @@
+# Vendored upstream dependencies (cloned separately, see README setup instructions)
+/sam2/
+/davis-evaluation/
+
+# External dataset (symlink to an out-of-tree mount; SA-V has its own license/EULA)
+/data
+
+# Python virtual environment
+/.venv
+__pycache__/
+*.pyc
+
+# Model checkpoints (large binaries; see README for download instructions)
+*.pt
+*.pth
+
+# Full experiment outputs: per-object predicted mask PNGs (>1M files, ~4.7GB),
+# raw logs, and cross-experiment symlinks. Only the summary/per-object score
+# CSVs are tracked.
+results/**
+!results/**/
+!results/**/*.csv
+
+# LaTeX build artifacts (paper.pdf/paper_uk.pdf are committed, intermediates are not)
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+
+# Claude Code project-local state
+/.claude/
