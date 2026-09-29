@@ -14,11 +14,11 @@ on a ground-truth-preselected subset of genuinely drifting objects (+15.5 J&F on
 known-drift subset), but is *net harmful* when applied to the full, unselected SA-V
 val set (72.1 → 68.7 J&F). The bottleneck is not correction precision — it's
 **trigger specificity**: the false-positive rate on healthy objects that never
-needed correcting. Eleven further mitigation attempts (frame-level gating,
+needed correcting. Twelve further mitigation attempts (frame-level gating,
 object-level circuit breakers, feature-based pre-selection, and correction
 softening) never closed the gap back to the plain uncorrected baseline. The best
-result across the whole series still lands 0.8–2.2 percentage points below simply
-not correcting at all.
+result across the whole series (D4) still lands 0.8 (val) and 1.8 (test)
+percentage points below simply not correcting at all.
 
 This repository contains the evaluation code, raw per-object results, and the full
 experimental narrative behind that finding. See [`paper/`](paper/) for the
@@ -119,10 +119,10 @@ result it corresponds to.
 
 Full per-experiment numbers, mechanisms, and dated write-ups are in
 [`sam2-drift-recovery-next-directions.md`](sam2-drift-recovery-next-directions.md)
-(the main experimental narrative, §1-14 — §13-14 cover two later,
-literature-motivated follow-up investigations beyond this series: multi-mask
-divergence as a risk predictor, disproven, and dynamic memory-gating,
-pilot-positive but full-val negative) and
+(the main experimental narrative, §1-15 — §14-15 cover two later,
+literature-motivated follow-up investigations beyond this series: dynamic
+memory-gating, pilot-positive but full-val negative, and object-pointer anchor
+recall, whose pilot did not pass its gate) and
 [`sam2-drift-recovery-results.md`](sam2-drift-recovery-results.md) (raw iteration
 log).
 

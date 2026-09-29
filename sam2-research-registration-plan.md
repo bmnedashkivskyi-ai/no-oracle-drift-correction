@@ -139,6 +139,10 @@ status fixes. Unlike the v1.0.0 sync, the public commit was created on
 top of `public/main` (tree = local `main`, parent = the v1.0.0 commit)
 and pushed without `--force`, so the public history is now v1.0.0 →
 v1.0.1 and no private history is exposed.
+`v1.0.2` (same day, same procedure) adds the Ukrainian README wording
+fix plus README consistency fixes (twelve mitigation attempts, D4 gap
+0.8/1.8, §1-15 reference). Note: tag `v1.0.1` points at `cc0cd45`, which
+predates the README fix; `v1.0.2` supersedes it.
 
 **Verify (done):** DOI resolves and its Zenodo record title matches
 ("...no-oracle-drift-correction: v1.0.0 — Initial public release");
