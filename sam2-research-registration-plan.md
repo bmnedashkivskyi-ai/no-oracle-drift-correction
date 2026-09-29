@@ -71,9 +71,25 @@ Actual execution:
   untouched — no rebase, no reset, no force-push against it.
 - Created a separate orphan branch `public-clean` from `main`'s current
   HEAD (`git checkout --orphan public-clean`), containing all 227
-  currently-tracked files with **one single root commit** (`da49fc8`,
-  "Initial public release..."), and pushed only that branch to the
-  `public` remote as `main` (`git push public public-clean:main`).
+  currently-tracked files with **one single root commit**, and pushed
+  only that branch to the `public` remote as `main`
+  (`git push public public-clean:main`).
+- **Correction (same day):** the first squash commit (`da49fc8`) still
+  carried this repo's standing `Co-Authored-By: Claude Sonnet 5` commit
+  trailer. On explicit user instruction to drop it, recreated the orphan
+  branch from scratch against the (by-then-updated) `main` and
+  re-committed with no trailer (`f329fb1`), then force-pushed to replace
+  the public commit (`git push public public-clean:main --force`).
+  Verified via `git fetch public && git show --format="%B" -s
+  public/main` that the trailer is gone from the live remote commit.
+  Scope decision: this only touched the *public* squash commit — local
+  `main`'s 32 real commits (many of which carry the same trailer from
+  this session's earlier work) were left untouched, since rewriting that
+  history would break the exact-commit-hash citations already written
+  into several of this project's own planning documents, and local
+  history is never pushed anywhere with the trailer visible. Going
+  forward in this project, new commits I make will omit the trailer per
+  this instruction, overriding the standing attribution default.
 - Ran a quick pre-push scan for secrets/tokens/API-key patterns and
   personal-identifier leakage across the squashed content — none found
   (two files reference the local `/home/consul/...` dev path; not
@@ -83,49 +99,68 @@ Actual execution:
   not an accumulating history on the public side).
 
 **Verify (done):** `git log --oneline main | wc -l` → 32 (unchanged);
-`git log --oneline public/main` → exactly one commit, `da49fc8`;
-`git remote -v` shows `public` pointing at the GitHub URL above; the
-repository is visible at that URL with a single commit in its history.
+`git log --oneline public/main` → single commit (`f329fb1` as of the
+Co-Authored-By correction below); `git remote -v` shows `public`
+pointing at the GitHub URL above; the repository is visible at that URL.
 
 ## Task 3 (conditional on Task 2) — Archival deposit with a persistent DOI
 
-**Status: unblocked (Task 2 done) — not started.**
+**Status: DONE.**
 
-- [ ] Connect **https://github.com/bmnedashkivskyi-ai/no-oracle-drift-correction**
-  to Zenodo (Zenodo's GitHub integration; requires you to authorize it
-  via your own Zenodo/GitHub account — not something I can do on your
-  behalf).
-- [ ] Cut a tagged release (e.g. `v1.0`) once connected, so Zenodo mints
-  a DOI for that snapshot. Note: since the public repo's history will be
-  replaced wholesale on each future sync (fresh squash, per Task 2's
-  revised approach), a Zenodo release should be cut only after you're
-  confident the current squashed snapshot is the one you want archived
-  under a permanent DOI — a later re-squash-and-force-push changes the
-  repo's default branch content but does not retract an already-minted
-  DOI/release archive, so re-squashing after minting a DOI would leave
-  the archived release referencing stale content relative to the live
-  repo. Decide the sync cadence before minting.
-- [ ] Update the paper's Data Availability Statement (all four source
-  files again) to cite the real repository URL and the DOI, replacing
-  the current generic "accompanying project code repository" phrasing.
-  Rebuild both PDFs again.
+- [x] User connected **https://github.com/bmnedashkivskyi-ai/no-oracle-drift-correction**
+  to Zenodo directly (their own account authorization — not something I
+  could do).
+- [x] Cut `v1.0.0`: created git tag `v1.0.0` on the public squash commit
+  (`f329fb1`), pushed it, then created a GitHub Release via
+  `gh release create v1.0.0`. Zenodo's webhook picked it up and minted
+  **DOI `10.5281/zenodo.22811949`** (concept DOI, which will track future
+  versions: `10.5281/zenodo.22811948`) — verified the version DOI
+  resolves via Zenodo's public API (`GET
+  https://zenodo.org/api/records/22811949`) and its title matches this
+  release before using it anywhere.
+- [x] Updated the Data Availability Statement in all four paper source
+  files (commit `58611da`) to cite the real repo URL and the version DOI
+  in place of the old generic "accompanying project code repository"
+  phrasing. Rebuilt and verified both PDFs.
 
-**Verify:** the Zenodo record exists and resolves; the DOI is a real,
-resolvable identifier; the paper's Data Availability Statement quotes
-that exact DOI and URL; PDFs rebuilt and re-verified same as Task 1.
+**Known, expected chicken-and-egg gap:** the `v1.0.0` release archived on
+Zenodo does **not** itself contain the DOI self-citation (impossible for
+a first release — you can't cite your own not-yet-minted DOI). The
+*public GitHub repo's* `main` branch has since moved ahead of that
+archived snapshot (the DOI-citing paper commit above). This is normal
+and common for first Zenodo releases; resolve it whenever convenient by
+re-squashing `main` → `public-clean` → force-push, then cutting a
+`v1.0.1`/`v1.1.0` release so Zenodo archives a self-citing snapshot too
+— entirely your call on timing, not urgent.
 
-## Task 4 (optional, your call, no action until you decide) — venue-specific steps
+**Resolved (2026-09-29):** released `v1.0.1`, which contains the
+DOI-citing paper plus the Ukrainian-wording, table-layout and Phase B
+status fixes. Unlike the v1.0.0 sync, the public commit was created on
+top of `public/main` (tree = local `main`, parent = the v1.0.0 commit)
+and pushed without `--force`, so the public history is now v1.0.0 →
+v1.0.1 and no private history is exposed.
 
-**Status: not started, no dependency assumed yet — needs you to name a
-target venue first, since the two candidate paths differ:**
+**Verify (done):** DOI resolves and its Zenodo record title matches
+("...no-oracle-drift-correction: v1.0.0 — Initial public release");
+`grep -o "10.5281/zenodo[.0-9]*"` finds the correct DOI in both rebuilt
+PDFs' extracted text; the old generic phrase is gone from both.
 
-- **arXiv submission** — gets a permanent timestamped identifier;
-  straightforward, no venue-specific formatting constraints beyond
-  arXiv's own submission requirements.
-- **OSF project registration** — an alternative or complement to Zenodo,
-  more common in some fields than in ML; only worth doing if you have a
-  specific reason to prefer it over Zenodo (e.g., a funder or
-  institutional requirement).
+## Task 4 (optional, your call) — venue-specific steps
 
-Nothing to verify yet — this task doesn't start until you pick a
-direction.
+**Status: NOT APPLICABLE — closed by explicit user decision.** Reasoning
+given: the project didn't achieve an improvement over baseline — it's a
+negative-results study plus two further negative-results follow-up
+investigations (Sections 4.5/7) — so neither an arXiv timestamp-priority
+claim nor a formal venue submission serves a real purpose here; nothing
+about the finding's substance depends on being first to claim it, and
+there's no positive result whose priority would need protecting. Both
+candidate paths below are explicitly declined, not merely deferred.
+
+Candidate paths considered and declined:
+- ~~arXiv submission~~ — a permanent timestamped identifier is only
+  valuable for priority protection; not applicable to a negative result.
+- ~~OSF project registration~~ — no funder/institutional requirement
+  driving it; Zenodo already covers the archival-DOI need (Task 3).
+
+**Verify:** no action taken on either path; this plan is now fully
+closed (Tasks 1–4 all resolved — 3 done, 1 explicitly not applicable).

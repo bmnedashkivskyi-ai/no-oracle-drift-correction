@@ -7,6 +7,10 @@
 \usepackage{newunicodechar}
 \usepackage[round,authoryear]{natbib}
 \usepackage{booktabs}
+\usepackage{tabularx}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\setlength{\emergencystretch}{3em}
 \usepackage{array}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -69,7 +73,7 @@ Classical visual tracking offers an independent lineage on the same problem. DaS
 
 DEVA \citep{cheng2023deva} offers a related architectural contrast to this project's own single-reference, single-direction attempts to stabilize correction: it decouples task-specific segmentation from a reusable temporal-propagation module and builds a coherent track through bi-directional propagation, fusing segmentation hypotheses from multiple frames rather than committing to one forward-only chain. This is structurally close to what this project's own D3 (a sliding correction-rate window) and consensus-of-K reference-mask variant gesture toward, but DEVA achieves it through a trained bi-directional fusion model rather than a heuristic layered on a frozen video predictor — the structural reason it can resolve ambiguity that this project's single-direction, single-reference heuristics could not.
 
-Two SAM2-specific follow-ups postdate and directly address the mechanism diagnosed independently here. DAM4SAM \citep{videnovic2024} adds a distractor-aware memory with an introspection-based update — deciding whether to trust and write a frame's result \emph{before} committing it to memory — architecturally distinct from, but close in spirit to, this project's B1 (a post-hoc plausibility check on a correction's output) and A2 (an object-level rate circuit breaker). This project later tested DAM4SAM's underlying introspective signal in isolation — the divergence between SAM2's own primary and best-alternative candidate mask, which the tracker computes at every step but normally discards — as a static per-object pre-selection feature (Section 4.5) and found it carries no more predictive signal than E1's trajectory-based features (R² = 0.028 versus E1's 0.026). DAM4SAM's actual mechanism is a different kind of intervention: it acts continuously, frame-by-frame, on what enters a persistent memory bank, rather than as a one-time decision of whether to run correction on an object at all. A later, separate follow-up outside this paper's twelve mitigation attempts subsequently tested that dynamic, memory-level role directly — skipping the write of a suspected-distractor frame into SAM2's non-conditioning memory bank, applied to plain, uncorrected propagation with no reprompt correction at all — and it did not survive contact with the full validation population: a curated n=30 known-drift pilot cleared its pre-committed gate by a wide margin (threshold 0.2, J\&F=39.4 against a 26.1 baseline), but the same threshold produced a net regression on the full 293-object population (J\&F=71.3 against a 72.1 baseline, 0.8 points below), the same curated-subset-versus-full-population pattern this paper documents for P5 (Section 5). The more ambitious half of DAM4SAM's mechanism — injecting a persistent distractor-resolving anchor frame into SAM2's memory-attention window outside its normal recency schedule — remains a distinct, untested extension: the original concern that SAM2's learned positional-encoding table has no entry for an arbitrary out-of-schedule distance has since been addressed at the design stage (a proposed route via SAM2's separate, continuously-encoded object-pointer channel, a code path the frozen model already exercises on out-of-range distances for its own conditioning-frame pointer on long videos), but the mechanism itself has not been implemented or run (Section 7). SAM2Long \citep{ding2024} maintains multiple candidate propagation pathways continuously and prunes by cumulative score, rather than committing to a binary detect-then-hard-reprompt decision as P5 does. SAM2Long was not implemented or tested in this project and is flagged as an untested future direction in Section 7. No source reviewed here reports measuring both correction precision on a ground-truth-preselected true-positive subset \emph{and} the net effect of the same mechanism applied unselectively to the full object population as two explicitly separated quantities — that separation is this project's specific empirical contribution to the area.
+Two SAM2-specific follow-ups postdate and directly address the mechanism diagnosed independently here. DAM4SAM \citep{videnovic2024} adds a distractor-aware memory with an introspection-based update — deciding whether to trust and write a frame's result \emph{before} committing it to memory — architecturally distinct from, but close in spirit to, this project's B1 (a post-hoc plausibility check on a correction's output) and A2 (an object-level rate circuit breaker). This project later tested DAM4SAM's underlying introspective signal in isolation — the divergence between SAM2's own primary and best-alternative candidate mask, which the tracker computes at every step but normally discards — as a static per-object pre-selection feature (Section 4.5) and found it carries no more predictive signal than E1's trajectory-based features (R² = 0.028 versus E1's 0.026). DAM4SAM's actual mechanism is a different kind of intervention: it acts continuously, frame-by-frame, on what enters a persistent memory bank, rather than as a one-time decision of whether to run correction on an object at all. A later, separate follow-up outside this paper's twelve mitigation attempts subsequently tested that dynamic, memory-level role directly — skipping the write of a suspected-distractor frame into SAM2's non-conditioning memory bank, applied to plain, uncorrected propagation with no reprompt correction at all — and it did not survive contact with the full validation population: a curated n=30 known-drift pilot cleared its pre-committed gate by a wide margin (threshold 0.2, J\&F=39.4 against a 26.1 baseline), but the same threshold produced a net regression on the full 293-object population (J\&F=71.3 against a 72.1 baseline, 0.8 points below), the same curated-subset-versus-full-population pattern this paper documents for P5 (Section 5). The more ambitious half of DAM4SAM's mechanism — injecting a persistent distractor-resolving anchor frame into SAM2's memory-attention window outside its normal recency schedule — remains only partly tested: the original concern that SAM2's learned positional-encoding table has no entry for an arbitrary out-of-schedule distance has since been addressed at the design stage (a proposed route via SAM2's separate, continuously-encoded object-pointer channel, a code path the frozen model already exercises on out-of-range distances for its own conditioning-frame pointer on long videos); a narrower variant has since been implemented and piloted — it swaps the content of an anchor object pointer from the last confirmed-clean frame into the oldest slot of SAM2's object-pointer window, but keeps that slot's fixed positional distance — and it did not pass its pre-committed pilot gate (J\&F=27.8 vs. baseline 26.1 on the n=30 known-drift subset, gate 29.1), while injection at the anchor frame's true, potentially much larger distance remains untested (Section 7). SAM2Long \citep{ding2024} maintains multiple candidate propagation pathways continuously and prunes by cumulative score, rather than committing to a binary detect-then-hard-reprompt decision as P5 does. SAM2Long was not implemented or tested in this project and is flagged as an untested future direction in Section 7. No source reviewed here reports measuring both correction precision on a ground-truth-preselected true-positive subset \emph{and} the net effect of the same mechanism applied unselectively to the full object population as two explicitly separated quantities — that separation is this project's specific empirical contribution to the area.
 
 \subsection{Test-time self-correction and confirmation bias in frozen models}
 
@@ -85,7 +89,7 @@ This is the area where a single external source most directly explains the proje
 
 \subsection{Model, benchmark, and evaluation protocol}
 
-All experiments use SAM2.1 Hiera-Tiny (SAM2 codebase commit \texttt{2b90b9f5ceec907a1c18123530e92e794ad901a4}), frozen throughout — no weights are updated at any point in this study. A transferability check confirms \texttt{box\_centroid} does not degrade on the larger Hiera-Small checkpoint on full DAVIS val (J\&F-Mean 0.842 vs. 0.8235 for Hiera-Tiny), but the full SA-V drift-correction series was run only on Hiera-Tiny; Hiera-Small was not carried through it (see Section 6). Evaluation uses the official SA-V evaluator (\texttt{sam2/sav\_dataset/sav\_evaluator.py}), which computes \texttt{J} (region similarity), \texttt{F} (boundary accuracy), and \texttt{J\&F = (J+F)/2}, skipping the first and last annotated frame per SA-V convention. SA-V val comprises 155 videos and 293 objects; SA-V test comprises 150 videos and 278 objects. Hardware was a single NVIDIA RTX 4070 Ti (12 GB) with PyTorch 2.13.0+cu130. Every reported number comes from this official evaluator run on real predictions, never from an LLM-based or otherwise heuristic scoring proxy.
+All experiments use SAM2.1 Hiera-Tiny (SAM2 codebase commit \texttt{2b90b9f5ceec907a1c18\allowbreak 123530e92e794ad901a4}), frozen throughout — no weights are updated at any point in this study. A transferability check confirms \texttt{box\_centroid} does not degrade on the larger Hiera-Small checkpoint on full DAVIS val (J\&F-Mean 0.842 vs. 0.8235 for Hiera-Tiny), but the full SA-V drift-correction series was run only on Hiera-Tiny; Hiera-Small was not carried through it (see Section 6). Evaluation uses the official SA-V evaluator (\texttt{sam2/sav\_dataset/sav\_evaluator.py}), which computes \texttt{J} (region similarity), \texttt{F} (boundary accuracy), and \texttt{J\&F = (J+F)/2}, skipping the first and last annotated frame per SA-V convention. SA-V val comprises 155 videos and 293 objects; SA-V test comprises 150 videos and 278 objects. Hardware was a single NVIDIA RTX 4070 Ti (12 GB) with PyTorch 2.13.0+cu130. Every reported number comes from this official evaluator run on real predictions, never from an LLM-based or otherwise heuristic scoring proxy.
 
 \subsection{Baseline prompting policy}
 
@@ -125,11 +129,12 @@ Every number reported in Section 4 comes from the official SA-V evaluator on rea
 
 \subsection{Baseline and failure decomposition}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Baseline transfer from DAVIS to SA-V.}
 \label{tab:1}
-\begin{tabular}{@{}llrrrr@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}LLRrrr@{}}
 \toprule
 Setting & Split & n & J\&F & J & F \\
 \midrule
@@ -138,14 +143,15 @@ Setting & Split & n & J\&F & J & F \\
 \texttt{box\_centroid}, Hiera-Tiny & SA-V val (official) & 155 videos / 293 objects & 72.1 & 68.6 & 75.6 \\
 \texttt{box\_centroid}, Hiera-Tiny & SA-V test (official) & 150 videos / 278 objects & 74.4 & --- & --- \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{SA-V val failure decomposition (n = 293 objects).}
 \label{tab:2}
-\begin{tabular}{@{}lrr@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}Lrr@{}}
 \toprule
 Category & Fraction & Mean J\&F \\
 \midrule
@@ -155,16 +161,17 @@ Category & Fraction & Mean J\&F \\
 Prompt-frame failures (among J\&F < 40, n = 36) & 6/36 (17\%) & --- \\
 Propagation-drift failures (among J\&F < 40, n = 36) & 30/36 (83\%) & --- \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{Oracle ceiling and the no-oracle self-referential ceiling}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Recoverability of the 30-object propagation-drift subset.}
 \label{tab:3}
-\begin{tabular}{@{}llrr@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}LLLr@{}}
 \toprule
 Variant & Detection signal & Correction source & J\&F \\
 \midrule
@@ -176,7 +183,7 @@ Wide threshold & area-ratio vs. EMA (0.15–5.0) & model's own last mask & 23.8 
 Tight threshold & area-ratio vs. EMA (0.5–2.0) & model's own last mask & 26.7 \\
 \texttt{object\_score\_logits} trigger & internal presence score (threshold 0.0) & model's own last mask & 26.8 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 All five no-oracle self-referential variants cluster tightly, within a 3.6-point band (J\&F $\in$ [23.8, 27.4]), and stay far below the 84.3 oracle ceiling. Stratifying the single-mask variant by number of self-corrections shows a bimodal ``correction cascade'': objects with $\leq$15 corrections gain a mean +20.6pp (n=10), objects with >15 corrections lose a mean $-$10.6pp (n=20).
@@ -185,11 +192,12 @@ An external-correction pilot (n = 6 objects, Claude as reviewer, no API integrat
 
 \subsection{P5: calibration, and the curated-subset-versus-full-population contrast}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{P5 calibration path on the 30-object drift subset.}
 \label{tab:4}
-\begin{tabular}{@{}lrr@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}LrR@{}}
 \toprule
 Configuration & J\&F & $\Delta$ vs. best prior no-oracle (27.4) \\
 \midrule
@@ -197,36 +205,38 @@ Untuned P5 (area-ratio + position-jump, default params) & 35.9 & +8.5pp \\
 P5, \texttt{jump\_ratio = 8.0} only calibrated & 39.3 & +11.9pp \\
 P5, fully calibrated (\texttt{jump\_ratio=8.0, low\_ratio=0.35, high\_ratio=2.5, ema\_alpha=0.2}) & \textbf{42.3} & \textbf{+14.9pp} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \emph{Table 4's $\Delta$ column is computed against 27.4 (the consensus-5 variant), the single best-performing configuration among the five prior no-oracle attempts shown in Table 3. The narrative baseline used for the headline ``+15.5pp'' figure elsewhere in this section and in Table 5 is instead 26.8 (the objscore variant): both are real reference points from Table 3, but 27.4 is the best of the prior attempts overall, while 26.8 is the specific configuration P5 finally replaces in the deployed, capstone comparison.}
 
 Relative to the objscore no-oracle baseline (26.8), fully calibrated P5 gains +15.5pp. Per-object, 21/30 objects improve, 4/30 regress (worst: $-$4.3pp, no catastrophes), and 5/30 are unchanged. The largest gains concentrate exactly on objects with independently confirmed multi-instance identity ambiguity: \texttt{sav\_022396} (5.2 → 95.3, +90.1pp), \texttt{sav\_035221/001} (11.4 → 63.3, +51.9pp), \texttt{sav\_047467/002} (24.2 → 64.1, +39.9pp).
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{(Headline) Curated true-positive subset versus full, unselected population — the paper's central empirical result.}
 \label{tab:5}
-\begin{tabular}{@{}lrlrl@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}LrLrL@{}}
 \toprule
 Population & n & Condition & J\&F & $\Delta$ vs. no-correction reference \\
 \midrule
 GT-preselected genuine drift-failure objects & 30 & Fully calibrated P5 & 42.3 & \textbf{+15.5pp} vs. objscore no-oracle baseline (26.8) \\
 Full, unselected SA-V val & 293 & P2+P5 combined, no gating (capstone) & 68.7 & \textbf{$-$3.4pp} vs. plain \texttt{box\_centroid} baseline (72.1) \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 Per-object outcomes on the full population: 44/293 improve, 178/293 regress, 71/293 unchanged. The improvements are the same objects P5 was calibrated for (\texttt{sav\_022396}: 5.0 → 95.3, +90.3pp; \texttt{sav\_022456}: 0.4 → 91.2, +90.8pp; \texttt{sav\_045706}: 5.6 → 95.3, +89.7pp), but the regressions are more numerous and comparably severe, striking objects the baseline already tracked well: \texttt{sav\_014969/000} (89.6 → 1.2, $-$88.4pp), \texttt{sav\_024930/001} (88.2 → 6.2, $-$82.0pp), \texttt{sav\_021068/000} (78.3 → 10.7, $-$67.6pp), and at least 15 further objects lose more than 35 points. Roughly 10\% of val objects (about 30 of 293) genuinely need drift correction; the trigger's implied false-positive rate on the remaining ``healthy'' $\sim$90\% is approximately 68\%.
 
 Two independent diagnostics corroborate that the trigger, not the correction step, is the problem. First, 200/293 objects (68\% of the whole population) fire the position-jump trigger at least once, and this subgroup has a mean delta of $-$5.17pp — worse than the population average — indicating the position signal is not, in practice, more specific to genuine identity switches than the area-ratio signal, despite the design intuition that a purely spatial signal should better resist confusion between visually identical instances. Second, correction rate per object is a cleanly monotonic predictor of outcome:
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Correction rate versus outcome, full SA-V val (n = 293). Per-bucket improved/regressed sub-counts as logged during the retrospective analysis are omitted here because they do not sum to the same population-wide improved/regressed totals reported for the capstone run above (a discrepancy present in the underlying experimental log that this paper does not attempt to silently resolve); the mean-delta trend below is unambiguous and is what motivated A2's design.}
 \label{tab:6}
-\begin{tabular}{@{}lrr@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}Lrr@{}}
 \toprule
 Correction rate (\texttt{n\_corrections / frames\_elapsed}) & n objects & Mean $\Delta$ \\
 \midrule
@@ -235,16 +245,17 @@ Correction rate (\texttt{n\_corrections / frames\_elapsed}) & n objects & Mean $
 0.15–0.30 & 67 & $-$5.70pp \\
 > 0.30 & 50 & $-$11.87pp \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{P2 isolated on the full, unselected population — a second illustration of the same pattern}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{P2 (largest-connected-component prompting), curated subset versus full population.}
 \label{tab:7}
-\begin{tabular}{@{}lrrl@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}LrrL@{}}
 \toprule
 Population & n & J\&F & $\Delta$ vs. \texttt{box\_centroid} \\
 \midrule
@@ -252,19 +263,20 @@ Curated: sparse-mask objects only (\texttt{box\_fill\_ratio} < 0.2) & 13 & 61.6 
 Full SA-V val (isolated, no P5) & 293 & 72.5 & +0.4pp \\
 Full SA-V test (isolated, no P5) & 278 & 74.1 & \textbf{$-$0.3pp} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 On the curated subset, P2 looks like a free, universally safe fix. On the full, unselected population it is high-variance and not risk-free: val shows 21/293 objects improving (up to +90.8pp) against 24/293 regressing (up to $-$48.5pp, \texttt{sav\_024172/003}: 72.5 → 24.0); test shows 16/278 improving (up to +50.7pp) against 31/278 regressing (up to $-$38.2pp, \texttt{sav\_042227/000}: 86.4 → 48.2), with the regression tail dominating on test (net $-$0.3pp). P2 on the 13-object test subset used for the original curated measurement is byte-identical to baseline (no fragmented masks present), a 0.0pp isolated effect fully inert on that split, in contrast to +14.6pp on the analogous val subset. Both ``confirmed'' positive results in this project's series (P2 on its curated subset, P5 on its curated subset) substantially or fully lose their effect once measured on a full, unselected population.
 
 \subsection{Mitigation attempts}
 
-\begin{table}[p]
+\begin{table}[!htbp]
 \centering
 \footnotesize
 \caption{Frame-level and object-level mitigations, full SA-V val and (where run) test.}
 \label{tab:8}
-\begin{tabular}{@{}p{3.6cm}p{2.4cm}rrlrr@{}}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash\hsize=1.3\hsize}X>{\raggedright\arraybackslash\hsize=1.0\hsize}Xr>{\raggedleft\arraybackslash\hsize=1.0\hsize}X>{\raggedleft\arraybackslash\hsize=0.7\hsize}Xrr@{}}
 \toprule
 Configuration & Family & val J\&F & val $\Delta$ & val improved/ regressed & test J\&F & test $\Delta$ \\
 \midrule
@@ -281,17 +293,18 @@ D2: warmup=1 (on D4 config) & object-level breaker & 70.9 & $-$1.2pp ($-$0.4pp v
 D4: A2 (0.15) + A1 stacked & object-level + frame-level & \textbf{71.3} & \textbf{$-$0.8pp} & --- & \textbf{72.6} & \textbf{$-$1.8pp} \\
 F1: soft-nudge, w=0.10 (on capstone, no A1/A2) & correction softening & 67.9 & $-$4.2pp & --- & not run & --- \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 D3 (sliding correction-rate window), E1 (all three pre-selection variants), and the DAM4SAM-inspired multi-mask divergence check never reached a full corrected run because cheap pilots or correlations on already-collected or purpose-run dry-run data were unambiguously negative (D3) or showed no usable signal (E1, multi-mask divergence); Table 9 reports those checks.
 
-\begin{table}[p]
+\begin{table}[!htbp]
 \centering
 \footnotesize
 \caption{Cheap-gate checks that closed a direction without a full run.}
 \label{tab:9}
-\begin{tabular}{@{}p{4.3cm}p{4.3cm}p{5.3cm}@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}LLL@{}}
 \toprule
 Direction & Check & Result \\
 \midrule
@@ -301,30 +314,31 @@ E1-timing: \texttt{first\_trigger\_frac} as live gate & Exact file-copy reconstr
 E1-timing: fraction of triggers in first 10\%/20\% of frames & Correlation, same 293 objects & r = $-$0.111 / $-$0.109 (all), non-monotonic buckets; combined 9-feature R$^2$ = 0.044 \\
 Multi-mask divergence (DAM4SAM-inspired): 6 intra-frame introspective features & Multiple regression, dedicated dry-run pass, all 293 val objects, vs. capstone-minus-P2-only delta & R$^2$ = 0.028 (materially unchanged from E1's 0.026); strongest single feature r = $-$0.131 (p = 0.024) does not survive a Spearman rank test ($\rho$ = $+$0.054, p = 0.35, sign flips) and is 1 of 6 features tested without multiple-comparisons correction; no usable signal \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 F1 (soft-nudge) was the only mitigation whose n=30 pilot was steeply negative at every tested weight yet was still run at full scale, on the reasoning that a mechanism changing \emph{how} correction is applied (rather than whether or when) could plausibly help the 263 objects outside the curated subset even while hurting the 30 inside it. It did not: full-val J\&F = 67.9 (w=0.10), worse than the unmitigated OR-gate capstone (68.7) and the single worst result of the entire series.
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{P5 val-to-test generalization gap on the curated drift subset.}
 \label{tab:10}
-\begin{tabular}{@{}lrrrrl@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}lrrrrL@{}}
 \toprule
 Split & n & Baseline J\&F & P5 J\&F & $\Delta$ & Improved/Regressed/Unchanged \\
 \midrule
 val & 30 & 26.8 & 42.3 & +15.5pp & 21/4/5 \\
 test & 25 & 26.9 & 28.9 & +2.0pp & 10/10/5 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 On test, P5 (with hyperparameters calibrated only on val) produces two catastrophic regressions absent on val: \texttt{sav\_017171/000} (87.5 → 53.7, $-$33.8pp, driven by the target rapidly growing in size while the reprompt box retains a stale, undersized reference) and \texttt{sav\_004755/000} (34.3 → 0.0, $-$34.3pp, driven by the target vanishing and P5 confidently re-anchoring on the wrong object, which then self-reinforces across all 68 remaining annotated frames). Both catastrophes originate from the area-ratio trigger (\texttt{position\_triggers = 0} in both cases). A targeted fix limiting consecutive vanish-triggered retries (\texttt{vanish\_retry\_limit}) improves val slightly (42.3 → 42.6 at limit 10) but leaves both test catastrophes completely unchanged, because each stems from a single confidently wrong first correction rather than a chain of retries.
 
 \subsection{Final result}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Final comparison: best mitigation versus baseline, both splits.}
 \label{tab:11}
@@ -375,7 +389,7 @@ A final scoping note applies to the paper's central claim. The specific numbers 
 The following are literature-derived candidate directions that target the diagnosed bottleneck — trigger specificity, not correction precision — and were \textbf{not} implemented or tested by this project. They are proposals only, drawn from the sources reviewed in Section 2, and should not be read as extensions of this paper's own results.
 
 \begin{enumerate}
-\item \textbf{Object-level introspective memory gating}, in the style of DAM4SAM \citep{videnovic2024}: rather than gating on a trigger signal computed \emph{after} a correction attempt (as B1 did) or on an accumulated correction rate (as A2 did), decide whether to trust and write a given frame's propagated mask into memory \emph{before} it can contaminate future frames — potentially preventing the single-bad-frame failure documented for \texttt{sav\_004755}, where one incorrect correction became a permanent, self-reinforcing anchor. This project tested DAM4SAM's underlying introspective signal — the divergence between SAM2's primary and best-alternative candidate mask — in a narrower role, as a static per-object pre-selection feature, and found no usable signal (Section 4.5). That is a different question from the one posed here: DAM4SAM's actual gate acts continuously, frame by frame, on what enters a persistent memory bank, not as a single up-front decision of whether to run correction on an object at all. A later, separate follow-up outside this paper's twelve mitigation attempts has since tested exactly that dynamic, memory-level role, applied to plain, uncorrected propagation with no reprompt correction at all: skipping the write of a suspected-distractor frame into SAM2's non-conditioning memory bank. A curated n=30 known-drift pilot cleared its pre-committed gate by a wide margin (threshold 0.2, J\&F=39.4 against a 26.1 baseline), but the same threshold produced a net regression on the full 293-object validation population (J\&F=71.3 against a 72.1 baseline, 0.8 points below) — the same curated-subset-versus-full-population divergence this paper documents for P5. The more ambitious half of DAM4SAM's mechanism that this simpler skip-write gate cannot reach — injecting a persistent distractor-resolving anchor frame into SAM2's memory-attention window outside its normal recency schedule — remains a distinct, untested extension: the original concern that SAM2's learned positional-encoding table has no entry for an arbitrary out-of-schedule distance has since been addressed at the design stage (a proposed route via SAM2's separate, continuously-encoded object-pointer channel, a code path the frozen model already exercises on out-of-range distances for its own conditioning-frame pointer on long videos), but the mechanism itself has not been implemented or run.
+\item \textbf{Object-level introspective memory gating}, in the style of DAM4SAM \citep{videnovic2024}: rather than gating on a trigger signal computed \emph{after} a correction attempt (as B1 did) or on an accumulated correction rate (as A2 did), decide whether to trust and write a given frame's propagated mask into memory \emph{before} it can contaminate future frames — potentially preventing the single-bad-frame failure documented for \texttt{sav\_004755}, where one incorrect correction became a permanent, self-reinforcing anchor. This project tested DAM4SAM's underlying introspective signal — the divergence between SAM2's primary and best-alternative candidate mask — in a narrower role, as a static per-object pre-selection feature, and found no usable signal (Section 4.5). That is a different question from the one posed here: DAM4SAM's actual gate acts continuously, frame by frame, on what enters a persistent memory bank, not as a single up-front decision of whether to run correction on an object at all. A later, separate follow-up outside this paper's twelve mitigation attempts has since tested exactly that dynamic, memory-level role, applied to plain, uncorrected propagation with no reprompt correction at all: skipping the write of a suspected-distractor frame into SAM2's non-conditioning memory bank. A curated n=30 known-drift pilot cleared its pre-committed gate by a wide margin (threshold 0.2, J\&F=39.4 against a 26.1 baseline), but the same threshold produced a net regression on the full 293-object validation population (J\&F=71.3 against a 72.1 baseline, 0.8 points below) — the same curated-subset-versus-full-population divergence this paper documents for P5. The more ambitious half of DAM4SAM's mechanism that this simpler skip-write gate cannot reach — injecting a persistent distractor-resolving anchor frame into SAM2's memory-attention window outside its normal recency schedule — remains only partly tested: the original concern that SAM2's learned positional-encoding table has no entry for an arbitrary out-of-schedule distance has since been addressed at the design stage (a proposed route via SAM2's separate, continuously-encoded object-pointer channel, a code path the frozen model already exercises on out-of-range distances for its own conditioning-frame pointer on long videos). A narrower variant has since been implemented and piloted: when the previous frame is suspected of a distractor, the content of a dynamically updated anchor object pointer, taken from the last confirmed-clean frame, replaces the oldest slot (\texttt{t\_diff} = 15) of SAM2's object-pointer window, leaving the total number of pointer tokens unchanged. On the n=30 known-drift subset it reached J\&F=27.8 against the baseline's 26.1 (5 objects improved, 2 regressed, 23 unchanged), short of its pre-committed pilot gate of 29.1, so it was closed without a full-validation run. That variant keeps the slot's fixed positional distance; injection at the anchor frame's true, potentially much larger distance — the variant the continuous-encoding argument above actually supports — has not been tested, and this negative pilot says nothing about it.
 \item \textbf{Multi-path propagation}, in the style of SAM2Long \citep{ding2024}: maintain several candidate propagation pathways per object continuously, pruned by cumulative confidence, instead of this project's single-hypothesis, detect-then-hard-reprompt design, structurally avoiding irreversible commitment to one bad correction.
 \item \textbf{Learned, appearance-based distractor discrimination combined with P5's positional signal}, in the style of DaSiamRPN \citep{zhu2018}: P5 uses position specifically because appearance cannot separate visually identical instances; a hybrid signal — a positional prior gated or weighted by a learned distractor-awareness score — was not tried and could plausibly raise specificity on the healthy population without losing sensitivity on genuine multi-instance cases.
 \item \textbf{Object-level re-detection with multi-hypothesis dynamic programming}, in the style of Siam R-CNN \citep{voigtlaender2020}: track candidate distractor identities alongside the target through time and resolve ambiguity retrospectively via a tracklet-association step, rather than a per-trigger, forward-only, single-decision reprompt.
@@ -390,7 +404,7 @@ A frozen SAM2.1 Hiera-Tiny, prompted well and evaluated on the official SA-V ben
 
 \section*{Data Availability Statement}
 
-SA-V (Segment Anything Video) is a dataset released by Meta AI and requires registration with Meta AI before download; it is not redistributed by this paper. Dataset details and the registration process are available at \url{https://ai.meta.com/datasets/segment-anything-video/}. All code implementing the baseline prompting policies, the P5 drift-detection and correction mechanism, and all twelve mitigation variants (A1, B1, A2, D1–D4, the three E1 pre-selection variants, the DAM4SAM-inspired multi-mask divergence check, and F1) is released alongside this paper in the accompanying project code repository, together with the per-object result CSVs underlying every table in Section 4. All quantitative results in this paper were produced by the official SA-V evaluator (\texttt{sam2/sav\_dataset/sav\_evaluator.py}) and the official DAVIS evaluator (\texttt{davis2017-evaluation}), not by any custom or LLM-based scoring procedure.
+SA-V (Segment Anything Video) is a dataset released by Meta AI and requires registration with Meta AI before download; it is not redistributed by this paper. Dataset details and the registration process are available at \url{https://ai.meta.com/datasets/segment-anything-video/}. All code implementing the baseline prompting policies, the P5 drift-detection and correction mechanism, and all twelve mitigation variants (A1, B1, A2, D1–D4, the three E1 pre-selection variants, the DAM4SAM-inspired multi-mask divergence check, and F1) is released alongside this paper at \url{https://github.com/bmnedashkivskyi-ai/no-oracle-drift-correction} (archived snapshot: Zenodo, DOI \url{https://doi.org/10.5281/zenodo.22811949}), together with the per-object result CSVs underlying every table in Section 4. All quantitative results in this paper were produced by the official SA-V evaluator (\texttt{sam2/sav\_dataset/sav\_evaluator.py}) and the official DAVIS evaluator (\texttt{davis2017-evaluation}), not by any custom or LLM-based scoring procedure.
 
 \section*{Ethics Statement}
 
